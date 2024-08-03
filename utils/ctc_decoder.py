@@ -1,3 +1,9 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
 from collections import defaultdict
 
 import torch

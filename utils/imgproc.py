@@ -1,9 +1,15 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
 import numpy as np
 from skimage import io
 import cv2
 
 def loadImage(img_file):
-    img = io.imread(img_file)           # RGB order
+    img = io.imread(img_file)
     if img.shape[0] == 2: img = img[0]
     if len(img.shape) == 2 : img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
     if img.shape[2] == 4:   img = img[:,:,:3]
@@ -34,8 +40,6 @@ def resize_aspect_ratio(img, square_size, interpolation, mag_ratio=1):
     # magnify image size
     target_size = mag_ratio * max(height, width)
 
-    # set original image size
-#     if target_size > square_size:
     if target_size < square_size:
         target_size = square_size
     
@@ -43,7 +47,6 @@ def resize_aspect_ratio(img, square_size, interpolation, mag_ratio=1):
 
     target_h, target_w = int(height * ratio), int(width * ratio)
     proc = cv2.resize(img, (target_w, target_h), interpolation = interpolation)
-
 
     # make canvas and paste image
     target_h32, target_w32 = target_h, target_w

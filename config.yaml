@@ -1,0 +1,21 @@
+SEED: 42
+DEVICE: "cuda:0"
+
+TRAIN:
+  NUM_EPOCH: 200
+  IMG_PATH: "./dataset/train_img"
+  LABEL_PATH: "./dataset/train_label"
+  BATCH_SIZE: 128
+  LR: 1e-6
+
+VAL:
+  IMG_PATH: "dataset/val_img"
+  LABEL_PATH: "dataset/val_label"
+  BATCH_SIZE: 64
+
+TEST:
+  CHECKPOINT: "./checkpoints/model_best.pth"
+  IMG_PATH: "dataset/test_img"
+  LABEL_PATH: "dataset/test_label"
+  BATCH_SIZE: 32
+

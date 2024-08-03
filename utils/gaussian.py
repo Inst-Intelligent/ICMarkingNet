@@ -1,3 +1,9 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
 from math import exp
 import numpy as np
 import cv2
@@ -19,12 +25,10 @@ class GaussianTransformer(object):
         np_contours = np.roll(np.array(np.where(binary != 0)), 1, axis=0).transpose().reshape(-1, 2)
         x, y, w, h = cv2.boundingRect(np_contours)
         self.regionbox = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], dtype=np.int32)
-        # print("regionbox", self.regionbox)
         _, binary = cv2.threshold(self.standardGaussianHeat, affinity_threshold * 255, 255, 0)
         np_contours = np.roll(np.array(np.where(binary != 0)), 1, axis=0).transpose().reshape(-1, 2)
         x, y, w, h = cv2.boundingRect(np_contours)
         self.affinitybox = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], dtype=np.int32)
-        # print("affinitybox", self.affinitybox)
         self.oribox = np.array([[0, 0, 1], [imgSize - 1, 0, 1], [imgSize - 1, imgSize - 1, 1], [0, imgSize - 1, 1]],
                                dtype=np.int32)
 
@@ -77,28 +81,13 @@ class GaussianTransformer(object):
         real_target_box[:, 0] = np.clip(real_target_box[:, 0], 0, image.shape[1])
         real_target_box[:, 1] = np.clip(real_target_box[:, 1], 0, image.shape[0])
 
-        # warped = cv2.warpPerspective(self.standardGaussianHeat.copy(), M, (image.shape[1], image.shape[0]))
-        # warped = np.array(warped, np.uint8)
-        # image = np.where(warped > image, warped, image)
-        # print(target_bbox)
         if np.any(target_bbox[0] < real_target_box[0]) or (
                 target_bbox[3, 0] < real_target_box[3, 0] or target_bbox[3, 1] > real_target_box[3, 1]) or (
                 target_bbox[1, 0] > real_target_box[1, 0] or target_bbox[1, 1] < real_target_box[1, 1]) or (
                 target_bbox[2, 0] > real_target_box[2, 0] or target_bbox[2, 1] > real_target_box[2, 1]):
-            # if False:
             warped = cv2.warpPerspective(self.standardGaussianHeat.copy(), M, (image.shape[1], image.shape[0]))
             warped = np.array(warped, np.uint8)
             image = np.where(warped > image, warped, image)
-            # _M = cv2.getPerspectiveTransform(np.float32(regionbox), np.float32(_target_box))
-            # warped = cv2.warpPerspective(self.standardGaussianHeat.copy(), _M, (width, height))
-            # warped = np.array(warped, np.uint8)
-            #
-            # # if affi:
-            # # print("warped", warped.shape, real_target_box, target_bbox, _target_box)
-            # # cv2.imshow("1123", warped)
-            # # cv2.waitKey()
-            # image[ymin:ymax, xmin:xmax] = np.where(warped > image[ymin:ymax, xmin:xmax], warped,
-            #                                        image[ymin:ymax, xmin:xmax])
         else:
             xmin = real_target_box[:, 0].min()
             xmax = real_target_box[:, 0].max()
@@ -117,10 +106,7 @@ class GaussianTransformer(object):
                 print("region (%d:%d,%d:%d) warped shape (%d,%d)" % (
                     ymin, ymax, xmin, xmax, warped.shape[1], warped.shape[0]))
                 return image
-            # if affi:
-            # print("warped", warped.shape, real_target_box, target_bbox, _target_box)
-            # cv2.imshow("1123", warped)
-            # cv2.waitKey()
+
             image[ymin:ymax, xmin:xmax] = np.where(warped > image[ymin:ymax, xmin:xmax], warped,
                                                    image[ymin:ymax, xmin:xmax])
         return image
@@ -128,7 +114,6 @@ class GaussianTransformer(object):
     def add_affinity_character(self, image, target_bbox):
         return self.add_region_character(image, target_bbox, self.affinitybox)
 
-    #TODO: 派生水平和垂直的两个版本
     def add_affinity_h(self, image, bbox_1, bbox_2):
         center_1, center_2 = np.mean(bbox_1, axis=0), np.mean(bbox_2, axis=0)
         tl = np.mean([bbox_1[0], bbox_1[1], center_1], axis=0)
@@ -194,29 +179,3 @@ class GaussianTransformer(object):
         threshhold_guassian = cv2.applyColorMap(standardGaussianHeat1, cv2.COLORMAP_JET)
         cv2.polylines(threshhold_guassian, [np.reshape(self.regionbox, (-1, 1, 2))], True, (255, 255, 255), thickness=1)
         cv2.imwrite(os.path.join(images_folder, 'threshhold_guassian.jpg'), threshhold_guassian)
-
-
-if __name__ == '__main__':
-    gaussian = GaussianTransformer(512, 0.4, 0.2)
-    gaussian.saveGaussianHeat()
-    gaussian._test()
-    bbox0 = np.array([[[0, 0], [100, 0], [100, 100], [0, 100]]])
-    image = np.zeros((500, 500), np.uint8)
-    # image = gaussian.add_region_character(image, bbox)
-    bbox1 = np.array([[[100, 0], [200, 0], [200, 100], [100, 100]]])
-    bbox2 = np.array([[[100, 100], [200, 100], [200, 200], [100, 200]]])
-    bbox3 = np.array([[[0, 100], [100, 100], [100, 200], [0, 200]]])
-
-    bbox4 = np.array([[[96, 0], [151, 9], [139, 64], [83, 58]]])
-    # image = gaussian.add_region_character(image, bbox)
-    # print(image.max())
-    image = gaussian.generate_region((500, 500, 1), [bbox4])
-    target_gaussian_heatmap_color = imgproc.cvt2HeatmapImg(image.copy() / 255)
-    cv2.imshow("test", target_gaussian_heatmap_color)
-    cv2.imwrite("test.jpg", target_gaussian_heatmap_color)
-    cv2.waitKey()
-    # weight, target = gaussian.generate_target((1024, 1024, 3), bbox.copy())
-    # target_gaussian_heatmap_color = imgproc.cvt2HeatmapImg(weight.copy() / 255)
-    # cv2.imshow('test', target_gaussian_heatmap_color)
-    # cv2.waitKey()
-    # cv2.imwrite("test.jpg", target_gaussian_heatmap_color)

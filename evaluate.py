@@ -1,23 +1,20 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 3 Aug 2024
+'''
+
 import torch
 import time
 import editdistance 
 
 from utils.ctc_decoder import ctc_decode
-import model.roi as roi
+import roi
 
 def label2Char(label):
     return "".join([roi.LABEL2CHAR[x] for x in label])
 
-def evaluate(
-    model, 
-    val_loader,  
-    criterion,
-    batch_size,
-    max_iter=None,
-    decode_method="beam_search",
-    beam_size=10,
-    types = None
-):
+def evaluate(model, data_loader, criterion):
     model.eval()
 
     tot_image_count = 0
@@ -31,42 +28,23 @@ def evaluate(
 
     start_time = time.time()
 
-    for index, inputs in enumerate(val_loader):
+    for index, inputs in enumerate(data_loader):
         with torch.no_grad():
-
-            if types is None:
-                results, labels, words_roi = model(inputs)
-            
-            else:
-                results, labels, words_roi = model(inputs)
-                names = [info.name for info in inputs[-1]]
-
-                words_types = []
-                words_from_sample = words_roi[:,0].int().cpu().numpy()
-                for i in range(words_roi.size(0)):
-                    name = names[words_from_sample[i].item()]
-                    if name in types:
-                        words_types.append(types[name])
-                    else:
-                        words_types.append(0)
-               
-        
+            results, labels, words_roi = model(inputs)
             loss, details = criterion(results, labels)
             
-
             _, _, marking_results = results
             _, _, (targets, target_lengths) = labels
             preds = ctc_decode(marking_results.detach(), method='greedy', beam_size=10)
             reals = targets.cpu().numpy().tolist()
             target_lengths = target_lengths.cpu().numpy().tolist()
 
-            tot_image_count += batch_size
+            tot_image_count += len(inputs)
             tot_word_count += len(target_lengths)
             tot_loss += loss.item()
             target_length_counter = 0
 
             n = 0
-
             sample_cases = []
             for pred, target_length in zip(preds, target_lengths):
                 real = reals[
@@ -89,7 +67,6 @@ def evaluate(
                 n+=1
 
     evaluation = {
-        "loss": tot_loss / tot_image_count,
         "acc": tot_correct / tot_word_count,
         "wrong_cases": wrong_cases,
         "rec": 1 - (tot_ed / tot_reallen),
@@ -98,3 +75,19 @@ def evaluate(
         "time": time.time() - start_time
     }
     return evaluation
+
+def print_results(results):
+    print("*****************")
+    print("** Wrong cases **")
+    for gt, pred in results['wrong_cases']:
+        print(f'{gt.upper()} -> {pred.upper()}')
+    print("*****************")
+    print(
+        "Accurate: {acc:.4f}\n"
+        "Recall: {rec:.4f}\n"
+        "Precision: {prec:.4f}\n"
+        "SED: {sed:.4f}\n"
+        "Elasped time: {time: .4f}s"
+        .format(**results)
+    )
+    print("*****************")

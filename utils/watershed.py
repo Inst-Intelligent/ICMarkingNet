@@ -1,3 +1,9 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
 import cv2
 import numpy as np
 import math
@@ -27,7 +33,6 @@ def getDetCharBoxes_core(textmap, text_threshold=0.5, low_text=0.4):
         # make segmentation map
         segmap = np.zeros(textmap.shape, dtype=np.uint8)
         segmap[labels == k] = 255
-        # segmap[np.logical_and(link_score == 1, text_score == 0)] = 0  # remove link area
         x, y = stats[k, cv2.CC_STAT_LEFT], stats[k, cv2.CC_STAT_TOP]
         w, h = stats[k, cv2.CC_STAT_WIDTH], stats[k, cv2.CC_STAT_HEIGHT]
         niter = int(math.sqrt(size * min(w, h) / (w * h)) * 2)
@@ -74,23 +79,19 @@ def watershed(oriimage, image, low_text=0.6, viz=False):
 
     ret, binary = cv2.threshold(gray, 0.3 * np.max(gray), 255, cv2.THRESH_BINARY)
 
-    # 形态学操作，进一步消除图像中噪点
     kernel = np.ones((3, 3), np.uint8)
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    mb = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=3)  # iterations连续两次开操作
-    sure_bg = cv2.dilate(mb, kernel, iterations=3)  # 3次膨胀,可以获取到大部分都是背景的区域
+    mb = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=3) 
+    sure_bg = cv2.dilate(mb, kernel, iterations=3)
     sure_bg = np.uint8(mb)
 
-    # 距离变换
     ret, sure_fg = cv2.threshold(gray, low_text * gray.max(), 255, cv2.THRESH_BINARY)
-    surface_fg = np.uint8(sure_fg)  # 保持色彩空间一致才能进行运算，现在是背景空间为整型空间，前景为浮点型空间，所以进行转换
+    surface_fg = np.uint8(sure_fg) 
     unknown = cv2.subtract(sure_bg, surface_fg)
-    # 获取maskers,在markers中含有种子区域
+
     ret, markers = cv2.connectedComponents(surface_fg)
     nLabels, labels, stats, centroids = cv2.connectedComponentsWithStats(surface_fg, connectivity=4)
-    # 分水岭变换
+
     markers = labels.copy() + 1
-    # markers = markers+1
     markers[unknown == 255] = 0
     markers = cv2.watershed(oriimage, markers=markers)
     oriimage[markers == -1] = [0, 0, 255]
@@ -99,13 +100,12 @@ def watershed(oriimage, image, low_text=0.6, viz=False):
     color_markers = color_markers / (color_markers.max() / 255)
     color_markers = np.uint8(color_markers)
     color_markers = cv2.applyColorMap(color_markers, cv2.COLORMAP_JET)
-#     display(Image.fromarray(color_markers))
+
     for i in range(2, np.max(markers) + 1):
         markers2 = np.zeros(markers.shape,dtype=np.uint8)
         markers2[markers==i]=255
         markers2 = cv2.dilate(markers2, kernel, iterations=3)
         np_contours = np.roll(np.array(np.where(markers2 == 255)), 1, axis=0).transpose().reshape(-1, 2)
-        # np_contours = np.roll(np.array(np.where(markers == i)), 1, axis=0).transpose().reshape(-1, 2)
         rectangle = cv2.minAreaRect(np_contours)
         box = cv2.boxPoints(rectangle)
         
@@ -118,9 +118,3 @@ def watershed(oriimage, image, low_text=0.6, viz=False):
         box = np.array(box)
         boxes.append(box)
     return np.array(boxes)
-
-
-if __name__ == '__main__':
-    image = cv2.imread('images/standard.jpg', cv2.IMREAD_COLOR)
-    boxes = watershed(image, True)
-    print(boxes)

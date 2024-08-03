@@ -1,0 +1,52 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
+from yacs.config import CfgNode as CN
+
+_C = CN()
+_C.VERSION = 1
+
+_C.OUTPUT_DIR = "./results"
+_C.SEED = -1
+_C.DEVICE = "cpu"
+
+_C.DATA = CN()
+_C.DATA.TEXT_THRES = 0.65
+_C.DATA.LINK_THRES = 0.40
+_C.DATA.LOW_TEXT = 0.70
+_C.DATA.SAMPLE_LEVEL = 2
+
+_C.LOSS = CN()
+_C.LOSS.ALPHA = 0.8
+_C.LOSS.SIGMA = 0.5
+
+_C.TRAIN = CN()
+_C.TRAIN.NUM_EPOCH = 200
+_C.TRAIN.RESUME = ""
+_C.TRAIN.IMG_PATH = ""
+_C.TRAIN.LABEL_PATH = ""
+_C.TRAIN.BATCH_SIZE = 16
+_C.TRAIN.NUM_WORKERS = 0
+_C.TRAIN.SHUFFLE_DATA = True
+_C.TRAIN.LR = 1e-6
+_C.TRAIN.AUGMENT_DATA = True
+
+_C.VAL = CN()
+_C.VAL.IMG_PATH = ""
+_C.VAL.LABEL_PATH = ""
+_C.VAL.BATCH_SIZE = 16
+_C.VAL.NUM_WORKERS = 0
+_C.VAL.SHUFFLE_DATA = False
+_C.VAL.AUGMENT_DATA = True
+
+_C.TEST = CN()
+_C.TEST.CHECKPOINT = ""
+_C.TEST.IMG_PATH = ""
+_C.TEST.LABEL_PATH = ""
+_C.TEST.BATCH_SIZE = 16
+_C.TEST.NUM_WORKERS = 0
+_C.TEST.SHUFFLE_DATA = False
+_C.TEST.AUGMENT_DATA = False

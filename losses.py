@@ -1,27 +1,38 @@
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+
+import math
 import torch
 import torch.nn as nn
 
 class Losses(nn.Module):
 
-    def __init__(self, sigma, n_epoch):
+    def __init__(self, sigma = 0.5, alpha = 0.8, n_iteration = 10000, is_train = True):
         super(Losses, self).__init__()
 
-        self.mse = SaliencyLoss()
-        self.ce1 = nn.CrossEntropyLoss()
-        self.ce2 = nn.CrossEntropyLoss()
-        self.ctc = nn.CTCLoss(reduction="mean", zero_infinity=True)
-        self.sigma = sigma
-        self.n = n_epoch
+        # for text and link maps
+        self.mse = SaliencyLoss() 
 
-    
+        # for positivity and axiality
+        self.ce1 = nn.CrossEntropyLoss() 
+        self.ce2 = nn.CrossEntropyLoss()
+
+        # for marking recognition
+        self.ctc = nn.CTCLoss(reduction="mean", zero_infinity=True) 
+        self.sigma = sigma
+        self.alpha = alpha
+        self.n = n_iteration
+
+        self.is_train = is_train
+
     def setDevice(self, device):
-        
         self.device = device
         self.to(self.device)
-    
 
     def saliency_loss(self, saliency_results, saliency_labels):
-
         text_map, link_map = saliency_results
         text_map_label, link_map_label, condicent_map, confidence = saliency_labels
 
@@ -32,27 +43,23 @@ class Losses(nn.Module):
             link_map, 
             condicent_map.to(self.device)
         )
-    
 
     def direction_loss(self, direction_results, direction_labels):
-
         a, p = direction_results
         a_label, p_label = direction_labels
-
         return self.sigma * self.ce1(p, p_label.to(self.device)) \
               +  (1 - self.sigma) * self.ce2(a, a_label.to(self.device))
     
 
     def recognition_loss(self, marking_results, marking_labels):
-
         marking_probs = marking_results
-        marking_lengths = torch.LongTensor([marking_probs.size(0)] * marking_probs.size(1))
+        marking_lengths = torch.tensor([marking_probs.size(0)] * marking_probs.size(1)).long()
         targets, target_lengths = marking_labels
 
-        return 10 * self.ctc(marking_probs, targets, marking_lengths, target_lengths)
+        return self.ctc(marking_probs, targets, marking_lengths, target_lengths)
     
 
-    def forward(self,  results, labels):
+    def forward(self, results, labels, i = 0):
         
         saliency_results, direction_results, marking_results = results
         saliency_labels, direction_labels, marking_labels = labels
@@ -61,7 +68,12 @@ class Losses(nn.Module):
         direction_loss = self.direction_loss(direction_results, direction_labels)
         recognition_loss = self.recognition_loss(marking_results, marking_labels)
 
-        total_loss = saliency_loss + recognition_loss
+        if self.is_train:
+            lamb = 1 / (1 + math.exp( (i  - self.n // 2) / (self.alpha * self.n)))
+        else:
+            lamb = 0.5
+        
+        total_loss = (1 - lamb) * saliency_loss + 0.5 * lamb * (direction_loss + recognition_loss)
 
         return total_loss, {
             'saliency_loss': saliency_loss.cpu().item(),
@@ -69,7 +81,6 @@ class Losses(nn.Module):
             'recognition_loss': recognition_loss.cpu().item()
         }
     
-
 
 class SaliencyLoss(nn.Module):
 
@@ -103,8 +114,6 @@ class SaliencyLoss(nn.Module):
                 sum_loss += nega_loss
 
         return sum_loss
-
-
 
     def forward(self, gh_label, gah_label, p_gh, p_gah, mask):
         gh_label = gh_label

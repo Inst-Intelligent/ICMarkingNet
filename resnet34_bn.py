@@ -4,7 +4,6 @@ import torchvision
 from torchvision.models import ResNet34_Weights
 from collections import namedtuple
 
-
 class resnet34_bn(torch.nn.Module):
     def __init__(self, pretrained=True, freeze=False):
         super(resnet34_bn, self).__init__()

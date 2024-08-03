@@ -1,9 +1,10 @@
-import cv2
-import imageio
-import json
 
-from pathlib import Path
-from PIL import Image
+'''
+Code for paper ICMarkingNet: An Ultra-Fast and Streamlined 
+Deep Model for IC Marking Inspection
+[Latest Update] 31 July 2024
+'''
+import cv2
 import numpy as np
 
 axialities = [0, 1, 0, 1]
@@ -16,11 +17,10 @@ class BBox(object):
         self.x2 = box["coordinates"]["x"] + box["coordinates"]["width"] / 2
         self.y2 = box["coordinates"]["y"] + box["coordinates"]["height"] / 2
 
-        # Resized Corrdinates
-        # 用户图片发生 resize 后，坐标进行对应的变化
-        # 需要调用 sample 的 resize 方法
+        # Back up the original coordination for further resizing
         self.x1_, self.y1_, self.x2_, self.y2_ = self.x1, self.y1, self.x2, self.y2
 
+        # Non-character markings
         if box["label"] == "#" or box["label"] == "$":
             self.text = box["label"]
             self.angle = None
@@ -31,6 +31,8 @@ class BBox(object):
             self.angle = int(angle)
             self.valid = True
 
+    # rotate the bounding box along with the image
+    # update the coordinates on the image
     def rotate(self, M, angle):
         self.x1, self.y1 = M.dot(np.array([self.x1, self.y1, 1]))
         self.x2, self.y2 = M.dot(np.array([self.x2, self.y2, 1]))
@@ -43,9 +45,11 @@ class BBox(object):
         if self.angle is not None:
             self.angle = (self.angle + angle) % 360
 
+    # output the box coordinates as a list
     def toList(self):
         return [int(self.x1), int(self.y1), int(self.x2), int(self.y2)]
 
+    # output the resized coordinates as a list
     def toResizedList(self):
         return [int(self.x1_), int(self.y1_), int(self.x2_), int(self.y2_)]
 
@@ -59,9 +63,7 @@ class Sample(object):
         for box in label[0]["annotations"]:
             self.boxes.append(BBox(box))
 
-    def show(self):
-        display(Image.fromarray(self.img))
-
+    # draw the bounding box for preview
     def drawLabel(self):
         for box in self.boxes:
             color = (0, 0, 255) if box.text == "$" else (0, 255, 255)
@@ -70,16 +72,14 @@ class Sample(object):
             ).astype(int)
             cv2.rectangle(self.img, (box.x1, box.y1), (box.x2, box.y2), color, 1)
 
-    # rotate 在 resize 前调用
+    # rotate need to be called before resized
     def rotate(self, angle=0):
         if angle == 0:
             return
 
         M = cv2.getRotationMatrix2D((self.width // 2, self.height // 2), -angle, 1)
-
         if angle == 90 or angle == 270:
             self.width, self.height = self.height, self.width
-            # 校正中心点
             M[0, 2] += (self.width - self.height) // 2
             M[1, 2] += (self.height - self.width) // 2
 
@@ -87,6 +87,8 @@ class Sample(object):
         for box in self.boxes:
             box.rotate(M, angle)
 
+    # resize the image
+    # the corresponding bounding boxes are also resized
     def resize(self, tar_size):
         for box in self.boxes:
             ws, hs = (self.width, self.height)
@@ -96,11 +98,11 @@ class Sample(object):
             box.x2_ = wt / ws * box.x2
             box.y2_ = ht / hs * box.y2
 
+    # output all the bounding boxes as a numpy array
     def toArray(self):
         return np.array(
             [box.toList() for box in filter(lambda box: box.valid is True, self.boxes)]
         )
-
     def toResizedArray(self):
         return np.array(
             [
@@ -109,43 +111,22 @@ class Sample(object):
             ]
         )
 
+    # output the direction angle annotation as a list
     def angles(self):
         return np.array(
             [box.angle for box in filter(lambda box: box.valid is True, self.boxes)]
         )
 
+    # output the axiality and positivity ground truth as a list
     def directions(self):
-        return ([axialities[box.angle // 90] for box in filter(lambda box: box.valid is True, self.boxes)],
-                 [postivities[box.angle // 90] for box in filter(lambda box: box.valid is True, self.boxes)])
-
+        return ([axialities[box.angle // 90] 
+                 for box in filter(lambda box: box.valid is True, self.boxes)],
+                 [postivities[box.angle // 90] 
+                  for box in filter(lambda box: box.valid is True, self.boxes)])
+    
+    # output the marking contents annotation as a list
     def texts(self):
         return np.array(
-            [box.text.lower()
-             .replace("i", "1")
-             .replace("o", "0") 
-             .replace("-", "")
+            [box.text.lower().replace("-", "") 
              for box in filter(lambda box: box.valid is True, self.boxes)]
         )
-
-
-if __name__ == "__main__":
-    data_dir = Path("valData")
-    label_dir = Path("valLabel")
-
-    for x in data_dir.iterdir():
-        if not x.suffix == ".jpeg":
-            continue
-
-        img = imageio.imread(str(x))
-
-        labelText = (label_dir / x.stem).with_suffix(".json")
-
-        if not labelText.exists():
-            continue
-
-        label = json.loads(labelText.read_text())
-
-        print(x.name)
-        sample = Sample(x.name, img, label)
-        sample.drawLabel()
-        sample.show()
