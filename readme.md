@@ -1,6 +1,10 @@
-# Setup
+# ICMarkingNet
+PyTorch implementation paper: ICMarkingNet: An Ultra-Fast and Streamlined Deep Model for IC Marking Inspection
+![](001.png)
 
-- Ensure that PyTorch with CUDAToolKit is set up in your environment. Note the version of CUDA should match the version for compling the pyTorch.
+## Setup
+
+- Ensure that PyTorch with CUDAToolKit is set up in your environment. Note the version of CUDA should match the version for compling the PyTorch.
     - Python ≥ 3.7
     - PyTorch ≥ 1.7.0
     - Torchvision ≥ 0.8
@@ -20,27 +24,28 @@
     python setup.py test
     ```
 - Install the required libraries:
-  | imageio
-  | opencv-python
-  | scikit-image
-  | Polygon3
-  | yacs
-  | editdistance
-  | pillow 
+  > imageio
+  > opencv-python
+  > scikit-image
+  > Polygon3
+  > yacs
+  > editdistance
+  > pillow 
+  
   The below libraries are listed in `requirements.txt`, and can be also installed through pip:
   ```bash
   pip install -r requirement.txt
   ```
 
 
-# Configuration
+## Configuration
 
 - Configure settings and hyper-parameters using the provided YAML file, `config.yaml`. For a comprehensive list of configurable items, refer to `utils/default_config.py`.
-- For the checkpoint file, please refer to: [Checkpoint File Path].
+- For the checkpoint file, please refer to: [](https://drive.google.com/file/d/1fq4yzjUbWDV7e3s3CVJjN2un3auAZ_wr/view?usp=share_link).
 - The test dataset can be downloaded from: [Test Dataset Link].
 - After loading the checkpoint and data into the environment, update their paths in the configuration file.
 
-# Testing and Training
+## Testing and Training
 
 - To run tests:
   ```bash
