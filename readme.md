@@ -24,13 +24,13 @@ PyTorch implementation paper: ICMarkingNet: An Ultra-Fast and Streamlined Deep M
     python setup.py test
     ```
 - Install the required libraries:
-  > imageio
-  > opencv-python
-  > scikit-image
-  > Polygon3
-  > yacs
-  > editdistance
-  > pillow 
+  > imageio  
+  > opencv-python  
+  > scikit-image  
+  > Polygon3  
+  > yacs  
+  > editdistance  
+  > pillow   
   
   The below libraries are listed in `requirements.txt`, and can be also installed through pip:
   ```bash
